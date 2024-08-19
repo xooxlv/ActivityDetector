@@ -1,0 +1,3 @@
+control_server 127.0.0.1:12345
+timer_send_status 60
+screenshot_dir screenshots
