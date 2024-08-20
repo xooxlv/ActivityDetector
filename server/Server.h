@@ -91,7 +91,11 @@ private:
                     ZeroMemory(buff, 1024);
                     recv(client_socket, buff, 1024, 0);
                     if (string(buff) == "STATE END") {
-                        cld.push_back(data);
+                        auto itr = find_if(cld.begin(), cld.end(), [&data](ClientData c) {
+                            return data.hostName == c.hostName; });
+                        if (itr == cld.end())
+                            cld.push_back(data);
+                        else *itr = data;
                     }
                 }
             }
@@ -148,9 +152,9 @@ public:
         return true;
     }
 
-   
-
-
+    const auto get_all_clients_data() {
+        return this->cld;
+    }
 
 };
 
