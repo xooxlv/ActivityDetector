@@ -18,66 +18,77 @@
 using namespace std;
 
 int generator = 1;
-wstring screenshot(wstring creanshot_dir)
+wstring screenshot(wstring wPath)
 {
-    HWND window = GetDesktopWindow();
-    RECT windowRect;
-    GetWindowRect(window, &windowRect);
+    BITMAPFILEHEADER bfHeader;
+    BITMAPINFOHEADER biHeader;
+    BITMAPINFO bInfo;
+    HGDIOBJ hTempBitmap;
+    HBITMAP hBitmap;
+    BITMAP bAllDesktops;
+    HDC hDC, hMemDC;
+    LONG lWidth, lHeight;
+    BYTE* bBits = NULL;
+    HANDLE hHeap = GetProcessHeap();
+    DWORD cbBits, dwWritten = 0;
+    HANDLE hFile;
+    INT x = GetSystemMetrics(SM_XVIRTUALSCREEN);
+    INT y = GetSystemMetrics(SM_YVIRTUALSCREEN);
 
-    int bitmap_dx = windowRect.right - windowRect.left;
-    int bitmap_dy = windowRect.bottom - windowRect.top;
+    ZeroMemory(&bfHeader, sizeof(BITMAPFILEHEADER));
+    ZeroMemory(&biHeader, sizeof(BITMAPINFOHEADER));
+    ZeroMemory(&bInfo, sizeof(BITMAPINFO));
+    ZeroMemory(&bAllDesktops, sizeof(BITMAP));
 
-    BITMAPINFOHEADER bmpInfoHeader;
-    BITMAPFILEHEADER bmpFileHeader;
-    BITMAP* pBitmap;
+    hDC = GetDC(NULL);
+    hTempBitmap = GetCurrentObject(hDC, OBJ_BITMAP);
+    GetObjectW(hTempBitmap, sizeof(BITMAP), &bAllDesktops);
 
-    bmpFileHeader.bfType = 0x4d42;
-    bmpFileHeader.bfSize = 0;
-    bmpFileHeader.bfReserved1 = 0;
-    bmpFileHeader.bfReserved2 = 0;
-    bmpFileHeader.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
+    lWidth = bAllDesktops.bmWidth;
+    lHeight = bAllDesktops.bmHeight;
 
-    bmpInfoHeader.biSize = sizeof(bmpInfoHeader);
-    bmpInfoHeader.biWidth = bitmap_dx;
-    bmpInfoHeader.biHeight = bitmap_dy;
-    bmpInfoHeader.biPlanes = 1;
-    bmpInfoHeader.biBitCount = 24;
-    bmpInfoHeader.biCompression = BI_RGB;
-    bmpInfoHeader.biSizeImage = bitmap_dx * bitmap_dy * (24 / 8);
-    bmpInfoHeader.biXPelsPerMeter = 0;
-    bmpInfoHeader.biYPelsPerMeter = 0;
-    bmpInfoHeader.biClrUsed = 0;
-    bmpInfoHeader.biClrImportant = 0;
+    DeleteObject(hTempBitmap);
 
-    BITMAPINFO info;
-    info.bmiHeader = bmpInfoHeader;
+    bfHeader.bfType = (WORD)('B' | ('M' << 8));
+    bfHeader.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
+    biHeader.biSize = sizeof(BITMAPINFOHEADER);
+    biHeader.biBitCount = 24;
+    biHeader.biCompression = BI_RGB;
+    biHeader.biPlanes = 1;
+    biHeader.biWidth = lWidth;
+    biHeader.biHeight = lHeight;
 
-    BYTE* memory;
-    HDC winDC = GetWindowDC(window);
-    HDC bmpDC = CreateCompatibleDC(winDC);
+    bInfo.bmiHeader = biHeader;
 
-    HBITMAP bitmap = CreateDIBSection(winDC, &info, DIB_RGB_COLORS, (void**)&memory, NULL, 0);
-    SelectObject(bmpDC, bitmap);
-    BitBlt(bmpDC, 0, 0, bitmap_dx, bitmap_dy, winDC, 0, 0, SRCCOPY);
-    ReleaseDC(window, winDC);
-    wstring path = creanshot_dir + L"\\" + to_wstring(generator++) + L".bmp";
+    cbBits = (((24 * lWidth + 31) & ~31) / 8) * lHeight;
 
-    HANDLE hFile = CreateFile(
-        path.c_str(),
-        GENERIC_WRITE,
-        0,
-        NULL,
-        OPEN_ALWAYS,
-        FILE_ATTRIBUTE_NORMAL,
-        NULL);
-    if (hFile == INVALID_HANDLE_VALUE)
+    hMemDC = CreateCompatibleDC(hDC);
+    hBitmap = CreateDIBSection(hDC, &bInfo, DIB_RGB_COLORS, (VOID**)&bBits, NULL, 0);
+    SelectObject(hMemDC, hBitmap);
+    BitBlt(hMemDC, 0, 0, lWidth, lHeight, hDC, x, y, SRCCOPY);
+
+    auto path = wPath + L"\\" + to_wstring(generator++) + L".bmp";
+    wcout << path << endl;
+
+    hFile = CreateFileW(path.c_str(),
+        GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (INVALID_HANDLE_VALUE == hFile)
+    {
+        DeleteDC(hMemDC);
+        ReleaseDC(NULL, hDC);
+        DeleteObject(hBitmap);
+
         return L"";
-
-    DWORD dwWritten = 0;
-    WriteFile(hFile, &bmpFileHeader, sizeof(BITMAPFILEHEADER), &dwWritten, NULL);
-    WriteFile(hFile, &bmpInfoHeader, sizeof(BITMAPINFOHEADER), &dwWritten, NULL);
-    WriteFile(hFile, memory, bmpInfoHeader.biSizeImage, &dwWritten, NULL);
+    }
+    WriteFile(hFile, &bfHeader, sizeof(BITMAPFILEHEADER), &dwWritten, NULL);
+    WriteFile(hFile, &biHeader, sizeof(BITMAPINFOHEADER), &dwWritten, NULL);
+    WriteFile(hFile, bBits, cbBits, &dwWritten, NULL);
+    FlushFileBuffers(hFile);
     CloseHandle(hFile);
+
+    DeleteDC(hMemDC);
+    ReleaseDC(NULL, hDC);
+    DeleteObject(hBitmap);
 
     return path;
 }
@@ -276,12 +287,19 @@ int main() {
 
                 if (command == "GET_SCREENSHOT") {
                     string screen_path = wstrToStr(screenshot(wstring(screenshot_dir.begin(), screenshot_dir.end())));
-
+                    cout << screen_path << endl;
                     ULONG64 size;
                     auto data = readBmp(screen_path, &size);
+                    Sleep(20);
                     client->sendMessage(to_string(size));
+                    Sleep(20);
                     client->receiveMessage();
+                    Sleep(20);
                     client->sendMessage(data, size);
+                    Sleep(20);
+                    delete[] data;
+                    size = 0;
+
 
                 }
                 else if (command == "GET_STATE") {
