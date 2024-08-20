@@ -2,7 +2,6 @@
 
 TCPClient::TCPClient(const std::string& host, int port)
     : host_(host), port_(port), socket_(INVALID_SOCKET) {
-    // Инициализация WinSock
     WSADATA wsaData;
     if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
         std::cerr << "Ошибка инициализации WinSock." << std::endl;
@@ -20,25 +19,21 @@ TCPClient::~TCPClient()
 
 void TCPClient::connect()
 {
-    // Создание сокета
     socket_ = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (socket_ == INVALID_SOCKET) {
         std::cerr << "Ошибка создания сокета." << std::endl;
         throw std::runtime_error("Socket creation failed");
     }
 
-    // Настройка адреса сервера
     sockaddr_in serverAddress;
     serverAddress.sin_family = AF_INET;
     serverAddress.sin_port = htons(port_);
 
-    // Использование inet_pton для преобразования IP-адреса
     if (inet_pton(AF_INET, host_.c_str(), &serverAddress.sin_addr) <= 0) {
         std::cerr << "Ошибка преобразования IP-адреса." << std::endl;
         throw std::runtime_error("inet_pton failed");
     }
 
-    // Подключение к серверу
     if (::connect(socket_, (sockaddr*)&serverAddress, sizeof(serverAddress)) == SOCKET_ERROR) {
         std::cerr << "Ошибка подключения к серверу." << std::endl;
         throw std::runtime_error("Connection failed");
@@ -72,7 +67,7 @@ std::string TCPClient::receiveMessage()
         std::cerr << "Ошибка получения сообщения." << std::endl;
         throw std::runtime_error("Receive failed");
     }
-    buffer[received] = '\0';  // Добавление нуль-терминатора
+    buffer[received] = '\0';
     return std::string(buffer);
 }
 

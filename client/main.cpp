@@ -222,9 +222,7 @@ char* readBmp(string filePath, ULONG64* dataSize) {
 
     // Получаем размер файла
     std::streamsize fileSize = file.tellg();
-    if (fileSize > 10 * 1024 * 1024 * 1024) {
-        throw std::runtime_error("Файл слишком большой (больше 10 МБ).");
-    }
+
     file.seekg(0, std::ios::beg);
 
     // Выделяем память для данных файла
@@ -281,6 +279,8 @@ int main() {
 
                     ULONG64 size;
                     auto data = readBmp(screen_path, &size);
+                    client->sendMessage(to_string(size));
+                    client->receiveMessage();
                     client->sendMessage(data, size);
 
                 }

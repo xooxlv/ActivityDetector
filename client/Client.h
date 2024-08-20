@@ -11,7 +11,7 @@ public:
     ~TCPClient();
 
     void connect();
-
+     
     void sendMessage(const std::string& message);
     void sendMessage(char* data, ULONG64 size);
 
