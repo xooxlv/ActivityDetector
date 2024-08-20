@@ -64,6 +64,22 @@ private:
         return clientData;
     }
 
+    void saveBmp(string fileName, char* data, int size) {
+        std::ofstream outfile(fileName, std::ios::binary);
+
+        if (!outfile) {
+            std::cerr << "Не удалось открыть файл для записи." << std::endl;
+        }
+
+        outfile.write(data, size);
+
+        outfile.close();
+
+        if (outfile.fail()) {
+            std::cerr << "Ошибка при закрытии файла." << std::endl;
+        }
+    }
+
     void accept_connections() {
         while (true) {
             sockaddr_in client_addr;
@@ -148,22 +164,6 @@ public:
 
     const auto get_all_clients_data() {
         return this->cld;
-    }
-
-    void saveBmp(string fileName, char* data, int size) {
-        std::ofstream outfile(fileName, std::ios::binary);
-
-        if (!outfile) {
-            std::cerr << "Не удалось открыть файл для записи." << std::endl;
-        }
-
-        outfile.write(data, size);
-
-        outfile.close();
-
-        if (outfile.fail()) {
-            std::cerr << "Ошибка при закрытии файла." << std::endl;
-        }
     }
 
     void send_command(string host, Command cmd) {
