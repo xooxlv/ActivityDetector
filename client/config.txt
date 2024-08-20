@@ -1,2 +1,2 @@
-control_server 127.0.0.1:12345
+control_server 127.0.0.1:4444
 screenshot_dir screenshots

