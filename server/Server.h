@@ -6,7 +6,7 @@
 #include <thread>
 #include <vector>
 #include <ws2tcpip.h>
-
+#include <fstream>
 #include <sstream>
 #include <unordered_map>
 
@@ -34,7 +34,7 @@ private:
     uint16_t port_;
     SOCKET listen_socket_;
     vector<ClientData> cld;
-
+    int generator = 1;
     ClientData parse_client_data(const std::string& input, SOCKET sock) {
         ClientData clientData;
         std::istringstream stream(input);
@@ -83,21 +83,15 @@ private:
                 char buff[1024] = {};
                 recv(client_socket, buff, 1024, 0);
 
-                if (string(buff) == "STATE START") {
-                    ZeroMemory(buff, 1024);
-                    recv(client_socket, buff, 1024, 0);
-                    auto data = parse_client_data(string(buff), client_socket);
 
-                    ZeroMemory(buff, 1024);
-                    recv(client_socket, buff, 1024, 0);
-                    if (string(buff) == "STATE END") {
-                        auto itr = find_if(cld.begin(), cld.end(), [&data](ClientData c) {
-                            return data.hostName == c.hostName; });
-                        if (itr == cld.end())
-                            cld.push_back(data);
-                        else *itr = data;
-                    }
-                }
+                auto data = parse_client_data(string(buff), client_socket);
+                auto itr = find_if(cld.begin(), cld.end(), [&data](ClientData c) {
+                    return data.hostName == c.hostName; });
+                if (itr == cld.end())
+                    cld.push_back(data);
+                else *itr = data;
+
+
             }
             else {
                 std::cerr << "inet_ntop() failed with error: " << WSAGetLastError() << std::endl;
@@ -156,5 +150,46 @@ public:
         return this->cld;
     }
 
+    void saveBmp(string fileName, char* data, int size) {
+        std::ofstream outfile(fileName, std::ios::binary);
+
+        if (!outfile) {
+            std::cerr << "Не удалось открыть файл для записи." << std::endl;
+        }
+
+        outfile.write(data, size);
+
+        outfile.close();
+
+        if (outfile.fail()) {
+            std::cerr << "Ошибка при закрытии файла." << std::endl;
+        }
+    }
+
+    void send_command(string host, Command cmd) {
+        auto itr = find_if(cld.begin(), cld.end(), [&host](ClientData c) {
+            return host == c.hostName; });
+
+        if (itr == cld.end()) {
+            return;
+        }
+
+        SOCKET client = (*itr).sock;
+
+        if (cmd == Command::GET_SCREENSHOT) {
+            send(client, "GET_SCREENSHOT", 15, 0);
+            char response[1024] = { 0 };
+            recv(client, response, 1024, 0);
+            int bmpSize = atoi(response);
+            cout << bmpSize << endl;
+            send(client, response, strlen(response), 0);
+            char* bmp = new char[bmpSize] {0};
+            recv(client, bmp, bmpSize, 0);
+            saveBmp(to_string(generator++) + "err.bmp", bmp, bmpSize);
+            delete[] bmp;
+            
+        }
+        
+    }
 };
 
