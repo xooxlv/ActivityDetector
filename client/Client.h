@@ -13,6 +13,7 @@ public:
     void connect();
 
     void sendMessage(const std::string& message);
+    void sendMessage(char* data, ULONG64 size);
 
     std::string receiveMessage();
 

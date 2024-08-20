@@ -54,6 +54,15 @@ void TCPClient::sendMessage(const std::string& message)
     std::cout << "Сообщение отправлено." << std::endl;
 }
 
+void TCPClient::sendMessage(char* data, ULONG64 size)
+{
+    if (send(socket_, data, size, 0) == SOCKET_ERROR) {
+        std::cerr << "Ошибка отправки сообщения." << std::endl;
+        throw std::runtime_error("Send failed");
+    }
+    std::cout << "Сообщение отправлено." << std::endl;
+}
+
 std::string TCPClient::receiveMessage()
 {
     const int bufferSize = 1024;

