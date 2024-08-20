@@ -185,11 +185,19 @@ public:
             send(client, response, strlen(response), 0);
             char* bmp = new char[bmpSize] {0};
             recv(client, bmp, bmpSize, 0);
-            saveBmp(to_string(generator++) + "err.bmp", bmp, bmpSize);
+            auto screenshot_path = to_string(generator++) + "err.bmp";
+            saveBmp(screenshot_path, bmp, bmpSize);
+            (*itr).screenshotPath = screenshot_path;
             delete[] bmp;
             
         }
-        
+        else if (cmd == Command::GET_STATE) {
+            send(client, "GET_STATE", 10, 0);
+            char buf[1024] = {};
+            recv(client, buf, 1024, 0);
+            auto parsed = this->parse_client_data(buf, client);
+            (*itr) = parsed;
+        }
     }
 };
 
