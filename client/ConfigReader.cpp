@@ -15,6 +15,7 @@ map<string, string> ConfigReader::read(string confPaht)
     {
         while (std::getline(in, line))
         {
+            cout << line << endl;
             string delimiter = " ";
             size_t pos = 0;
             string key;

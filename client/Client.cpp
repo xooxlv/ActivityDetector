@@ -1,4 +1,6 @@
 #include "Client.h"
+#include <string>
+using namespace std;
 
 TCPClient::TCPClient(const std::string& host, int port)
     : host_(host), port_(port), socket_(INVALID_SOCKET) {
@@ -22,6 +24,7 @@ void TCPClient::connect()
     if (socket_ == INVALID_SOCKET) {
         std::cerr << "Ошибка создания сокета." << std::endl;
         throw std::runtime_error("Socket creation failed");
+
     }
 
     sockaddr_in serverAddress;
@@ -31,11 +34,13 @@ void TCPClient::connect()
     if (inet_pton(AF_INET, host_.c_str(), &serverAddress.sin_addr) <= 0) {
         std::cerr << "Ошибка преобразования IP-адреса." << std::endl;
         throw std::runtime_error("inet_pton failed");
+
     }
 
     if (::connect(socket_, (sockaddr*)&serverAddress, sizeof(serverAddress)) == SOCKET_ERROR) {
         std::cerr << "Ошибка подключения к серверу." << std::endl;
         throw std::runtime_error("Connection failed");
+
     }
     std::cout << "Соединение с сервером установлено." << std::endl;
 }
