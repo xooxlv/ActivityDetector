@@ -11,9 +11,8 @@ TCPClient::TCPClient(const std::string& host, int port)
 
 TCPClient::~TCPClient()
 {
-    if (socket_ != INVALID_SOCKET) {
         closesocket(socket_);
-    }
+    
     WSACleanup();
 }
 

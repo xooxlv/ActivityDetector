@@ -62,6 +62,7 @@ int main() {
    
     while (true) {
         try {
+            Sleep(10);
             client = new TCPClient(server_ip, server_port);
             client->connect();
         } catch (exception) {
