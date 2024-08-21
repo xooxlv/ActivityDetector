@@ -132,10 +132,14 @@
     <ClCompile Include="Client.cpp" />
     <ClCompile Include="ConfigReader.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="OS.cpp" />
+    <ClCompile Include="Screenshoter.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Client.h" />
     <ClInclude Include="ConfigReader.h" />
+    <ClInclude Include="OS.h" />
+    <ClInclude Include="Screenshoter.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

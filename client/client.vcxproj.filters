@@ -24,12 +24,24 @@
     <ClCompile Include="ConfigReader.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
+    <ClCompile Include="OS.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="Screenshoter.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Client.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
     <ClInclude Include="ConfigReader.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="OS.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="Screenshoter.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
   </ItemGroup>
