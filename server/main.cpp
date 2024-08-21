@@ -175,6 +175,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
                     MessageBox(hWnd, L"Клиент не в сети", L"Невозможно получить скриншот", MB_ICONERROR);
                     break;
                 }
+                system(path.c_str());
+                break;
                 HINSTANCE hInstance = (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE);
                 CreateChildWindow(hInstance, hWnd, StringParser::lpcstr_to_lpwstr(path.c_str()));
             }
