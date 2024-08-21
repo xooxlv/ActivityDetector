@@ -163,7 +163,7 @@ public:
     }
 
     const auto get_all_clients_data() {
-        return this->cld;
+        return &this->cld;
     }
 
     void send_command(string host, Command cmd) {
@@ -177,18 +177,30 @@ public:
         SOCKET client = (*itr).sock;
 
         if (cmd == Command::GET_SCREENSHOT) {
-            send(client, "GET_SCREENSHOT", 15, 0);
-            char response[1024] = { 0 };
-            recv(client, response, 1024, 0);
-            int bmpSize = atoi(response);
-            cout << bmpSize << endl;
-            send(client, response, strlen(response), 0);
-            char* bmp = new char[bmpSize] {0};
-            recv(client, bmp, bmpSize, 0);
-            auto screenshot_path = to_string(generator++) + "err.bmp";
-            saveBmp(screenshot_path, bmp, bmpSize);
-            (*itr).screenshotPath = screenshot_path;
-            delete[] bmp;
+            char* bmp = nullptr;
+            try {
+                send(client, "GET_SCREENSHOT", 15, 0);
+                char response[1024] = { 0 };
+                recv(client, response, 1024, 0);
+                int bmpSize = atoi(response);
+                if (bmpSize == 0) {
+                    throw exception("BMP size == 0");
+                }
+                cout << bmpSize << endl;
+                send(client, response, strlen(response), 0);
+                bmp = new char[bmpSize] {0};
+                recv(client, bmp, bmpSize, 0);
+                auto screenshot_path = to_string(generator++) + "err.bmp";
+                saveBmp(screenshot_path, bmp, bmpSize);
+                (*itr).screenshotPath = screenshot_path;
+                delete[] bmp;
+            }
+            catch (exception ex){
+                if (bmp != nullptr)
+                    delete[] bmp;
+                (*itr).screenshotPath = "";
+            }
+
 
         }
         else if (cmd == Command::GET_STATE) {

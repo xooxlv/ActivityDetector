@@ -7,19 +7,23 @@
 #include <vector>
 #include <thread>
 
+#include "StringParser.h"
+
 #pragma comment(lib, "comctl32.lib")
 using namespace std;
 
-Server serv(4444);
+Server serv(4444);      // сервер
 
-HINSTANCE hInst;
-LPCWSTR szTitle = L"Мое Графическое Окно";
-LPCWSTR szWindowClass = L"MYWINDOWCLASS";
+HINSTANCE hInst;        // состояние окна
+HWND hListView;         // список клиентов
+HWND hButton;           // кнопка получения скриншота
+HWND hWnd;              // основное окно
+HWND hWndComboBox;      // выпадающий список клиентов для получения скриншота
+HWND hwndChild;         // окно скриншота
 
-HWND hListView;
-HWND hButton;
-HWND hWnd;
-HWND hWndComboBox;
+int displayedClients = 0;                       // количество отображенных клиентов на listView
+vector<ClientData>* allClientData = nullptr;    // ссылка на всех клиентов сервера
+vector<string> pcNamesComboBox;                 // все клиенты на comboboxe
 
 ATOM MyRegisterClass(HINSTANCE hInstance);
 BOOL InitInstance(HINSTANCE, int);
@@ -28,51 +32,39 @@ LRESULT CALLBACK ChildWndProc(HWND, UINT, WPARAM, LPARAM);
 void CreateListView(HWND hWnd);
 void CreateGetScreenshotControl(HWND hWnd);
 
-LVITEM lvi;
 
-LPWSTR strToLpwstr(string s) {
-    auto ws = wstring(s.begin(), s.end());
-    WCHAR* cws = new WCHAR[100];
-    lstrcpyW(cws, ws.c_str());
-    return cws;
-}
 
-int old_count = 0;
-vector<ClientData> doo;
-void UpdateListView(vector<ClientData> cld) {
+void UpdateListView() {
+    LVITEM lvi;
+
     lvi.mask = LVIF_TEXT;
-    for (int i = old_count; i < cld.size(); i++) {
+    for (int i = displayedClients; i < (*allClientData).size(); i++) {
         lvi.iItem = i;
         lvi.iSubItem = 0;
-        lvi.pszText = strToLpwstr(cld[i].ip);
+        lvi.pszText = StringParser::lpcstr_to_lpwstr((*allClientData)[i].ip.c_str());
         ListView_InsertItem(hListView, &lvi);
-        ListView_SetItemText(hListView, i, 1, strToLpwstr(cld[i].hostName));
-        ListView_SetItemText(hListView, i, 2, strToLpwstr(cld[i].domain));
-        ListView_SetItemText(hListView, i, 3, strToLpwstr(cld[i].lastActivityTime));
-        old_count++;
+        ListView_SetItemText(hListView, i, 1, StringParser::lpcstr_to_lpwstr((*allClientData)[i].hostName.c_str()));
+        ListView_SetItemText(hListView, i, 2, StringParser::lpcstr_to_lpwstr((*allClientData)[i].domain.c_str()));
+        ListView_SetItemText(hListView, i, 3, StringParser::lpcstr_to_lpwstr((*allClientData)[i].lastActivityTime.c_str()));
+        displayedClients++;
     }
 
-    for (int i = 0; i < cld.size(); i++) {
-        ListView_SetItemText(hListView, i, 0, strToLpwstr(cld[i].ip));
-        ListView_SetItemText(hListView, i, 1, strToLpwstr(cld[i].hostName));
-        ListView_SetItemText(hListView, i, 2, strToLpwstr(cld[i].domain));
-        ListView_SetItemText(hListView, i, 3, strToLpwstr(cld[i].lastActivityTime));
+    for (int i = 0; i < (*allClientData).size(); i++) {
+        ListView_SetItemText(hListView, i, 0, StringParser::lpcstr_to_lpwstr((*allClientData)[i].ip.c_str()));
+        ListView_SetItemText(hListView, i, 1, StringParser::lpcstr_to_lpwstr((*allClientData)[i].hostName.c_str()));
+        ListView_SetItemText(hListView, i, 2, StringParser::lpcstr_to_lpwstr((*allClientData)[i].domain.c_str()));
+        ListView_SetItemText(hListView, i, 3, StringParser::lpcstr_to_lpwstr((*allClientData)[i].lastActivityTime.c_str()));
     }
 }
 
-vector<string> incb;
 void UpdateComboBox() {
-    for (auto& v : doo) {
-        if (find(incb.begin(), incb.end(), v.hostName) == incb.end()) {
-            SendMessage(hWndComboBox, CB_ADDSTRING, 0, (LPARAM)strToLpwstr(v.hostName));
-            incb.push_back(v.hostName);
+    for (auto v : (*allClientData)) {
+        if (find(pcNamesComboBox.begin(), pcNamesComboBox.end(), v.hostName) == pcNamesComboBox.end()) {
+            SendMessage(hWndComboBox, CB_ADDSTRING, 0, 
+                (LPARAM)StringParser::lpcstr_to_lpwstr(v.hostName.c_str()));
+            pcNamesComboBox.push_back(v.hostName);
         }
     }
-}
-
-std::string wcharToString(const wchar_t* wchar_str) {
-    std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> converter;
-    return converter.to_bytes(wchar_str);
 }
 
 void DrawBmpImage(HWND hwnd, LPCWSTR bmpFilePath) {
@@ -112,7 +104,6 @@ void DrawBmpImage(HWND hwnd, LPCWSTR bmpFilePath) {
     DeleteObject(hBitmap);
 }
 
-
 LRESULT CALLBACK ChildWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
     switch (message) {
     case WM_PAINT: {
@@ -128,14 +119,14 @@ LRESULT CALLBACK ChildWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPa
         break;
     }
     case WM_DESTROY:
-        PostQuitMessage(0);
+        DestroyWindow(hWnd);
+        //PostQuitMessage(0);
         break;
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
     }
     return 0;
 }
-
 
 void CreateChildWindow(HINSTANCE hInstance, HWND parentHwnd, LPCWSTR bmpFilePath) {
     WNDCLASS wc = {};
@@ -145,12 +136,12 @@ void CreateChildWindow(HINSTANCE hInstance, HWND parentHwnd, LPCWSTR bmpFilePath
 
     RegisterClass(&wc);
 
-    HWND hwndChild = CreateWindowEx(
+    hwndChild = CreateWindowEx(
         0,
         L"ChildWindowClass",
         L"Скриншот",
         WS_OVERLAPPEDWINDOW,
-        CW_USEDEFAULT, CW_USEDEFAULT, 1300, 800, // Размер окна
+        CW_USEDEFAULT, CW_USEDEFAULT, 1250, 750, // Размер окна
         parentHwnd, NULL, hInstance, NULL
     );
 
@@ -170,21 +161,26 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
             wchar_t text[256] = {};
             GetDlgItemText(hWnd, 2, text, 256);
 
-            auto pcName = wcharToString(text);
+            auto pcName = StringParser::wstr_to_str(text);
             serv.send_command(pcName, Command::GET_SCREENSHOT);
-            auto dd = serv.get_all_clients_data();
-            auto itr = find_if(dd.begin(), dd.end(), [&pcName](ClientData cl) {
+            allClientData = serv.get_all_clients_data();
+
+            auto itr = find_if((*allClientData).begin(), (*allClientData).end(), [&pcName](ClientData cl) {
                 return cl.hostName == pcName;
                 });
 
-            if (itr != dd.end()) {
+            if (itr != (*allClientData).end()) {
                 string path = itr->screenshotPath;
+                if (path.empty()) {
+                    MessageBox(hWnd, L"Клиент не в сети", L"Невозможно получить скриншот", MB_ICONERROR);
+                    break;
+                }
                 HINSTANCE hInstance = (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE);
-                CreateChildWindow(hInstance, hWnd, strToLpwstr(path));
+                CreateChildWindow(hInstance, hWnd, StringParser::lpcstr_to_lpwstr(path.c_str()));
             }
         }
         else if (wParam == 12) {
-            UpdateListView(doo);
+            UpdateListView();
             UpdateComboBox();
         }
         break;
@@ -203,11 +199,10 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
     thread recv_new_stat([&]() {
         while (true) {
             Sleep(1000);
-            auto client_data = serv.get_all_clients_data();
-            for (auto cld : client_data) {
+            allClientData = serv.get_all_clients_data();
+            for (auto cld : (*allClientData)) {
                 serv.send_command(cld.hostName, Command::GET_STATE);
             }
-            doo = client_data;
             SendMessage(hWnd, WM_COMMAND, 12, 0);
         }
         });
@@ -233,7 +228,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
     hInst = hInstance;
-    hWnd = CreateWindow(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
+    hWnd = CreateWindow(L"MYWINDOWCLASS", L"Сервер контроля", WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
         nullptr, nullptr, hInstance, nullptr);
 
@@ -260,7 +255,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance) {
     wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
     wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
     wcex.lpszMenuName = nullptr;
-    wcex.lpszClassName = szWindowClass;
+    wcex.lpszClassName = L"MYWINDOWCLASS";
     wcex.hIconSm = LoadIcon(wcex.hInstance, IDI_APPLICATION);
 
     return RegisterClassEx(&wcex);
