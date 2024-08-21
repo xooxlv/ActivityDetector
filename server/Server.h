@@ -9,6 +9,7 @@
 #include <fstream>
 #include <sstream>
 #include <unordered_map>
+#include <mutex>
 
 using namespace std;
 
@@ -35,6 +36,7 @@ private:
     SOCKET listen_socket_;
     vector<ClientData> cld;
     int generator = 1;
+    mutex mtx;
     ClientData parse_client_data(const std::string& input, SOCKET sock) {
         ClientData clientData;
         std::istringstream stream(input);
@@ -167,6 +169,8 @@ public:
     }
 
     void send_command(string host, Command cmd) {
+        unique_lock<mutex> lock(mtx);
+
         auto itr = find_if(cld.begin(), cld.end(), [&host](ClientData c) {
             return host == c.hostName; });
 
