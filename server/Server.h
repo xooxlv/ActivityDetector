@@ -189,14 +189,16 @@ public:
             saveBmp(screenshot_path, bmp, bmpSize);
             (*itr).screenshotPath = screenshot_path;
             delete[] bmp;
-            
+
         }
         else if (cmd == Command::GET_STATE) {
             send(client, "GET_STATE", 10, 0);
             char buf[1024] = {};
             recv(client, buf, 1024, 0);
             auto parsed = this->parse_client_data(buf, client);
-            (*itr) = parsed;
+            if (parsed.hostName.length() > 0) {
+                (*itr) = parsed;
+            }
         }
     }
 };
